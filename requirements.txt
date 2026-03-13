@@ -16,6 +16,7 @@ msal>=1.26.0
 # ── Database (PostgreSQL async) ───────────────────────────────────────────────
 sqlalchemy[asyncio]>=2.0.30
 asyncpg>=0.29.0                  # async PostgreSQL driver
+psycopg2-binary>=2.9.9           # fallback for sync operations/migrations
 alembic>=1.13.0                  # migrations
 
 # ── JWT Auth ─────────────────────────────────────────────────────────────────

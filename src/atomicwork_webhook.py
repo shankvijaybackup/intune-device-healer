@@ -968,8 +968,8 @@ async def process_ticket_background(display_id: str, event_type: str):
 # API ENDPOINTS
 # ============================================================================
 
-@app.get("/")
-async def root():
+@app.get("/api/v1/webhook-info")
+async def webhook_info():
     return {
         "service": "Intune Device Healer - Atomicwork Integration",
         "status": "running",
