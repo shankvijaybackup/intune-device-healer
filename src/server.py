@@ -1052,38 +1052,6 @@ else:
 # RUN SERVER
 # ============================================================================
 
-if __name__ == "__main__":
-    import sys
-
-    # When spawned as a subprocess by an MCP client (e.g. Claude Code), stdin is
-    # a pipe, not a TTY.  In that case run the pure-stdio MCP transport so the
-    # JSON-RPC frames flow cleanly over stdin/stdout without any HTTP/uvicorn
-    # output polluting the stream.
-    #
-    # When started interactively (terminal) run the full HTTP server so the
-    # REST API, dashboard, metrics, and /mcp HTTP endpoint are all available.
-    if not sys.stdin.isatty():
-        # ── Stdio mode (MCP subprocess) ───────────────────────────────────────
-        mcp.run()
-    else:
-        # ── HTTP mode (interactive / docker / systemd) ────────────────────────
-        import uvicorn
-        logger.info("Starting Intune Device Healer Unified Server", version="1.0.0")
-        logger.info(
-            "Endpoints ready",
-            mcp="/mcp",
-            webhook_legacy="/webhook/ticket",
-            api_webhook="/api/v1/webhook",
-            health="/healthz",
-            metrics="/metrics",
-        )
-        uvicorn.run(
-            "server:app",
-            host="0.0.0.0",
-            port=8000,
-            log_config=None,   # use structlog
-            timeout_graceful_shutdown=30,
-        )
 
 # ============================================================================
 # UNIVERSAL API & GRAPH ADVANCED TOOLS
@@ -2213,3 +2181,41 @@ async def run_offboarding_checklist(device_id: str, user_upn: str) -> dict:
         user_upn: Departing employee's UPN
     """
     return await lifecycle_tools.run_offboarding_checklist(device_id, user_upn)
+
+
+# ============================================================================
+# RUN SERVER (Moved to end to ensure all tools are registered)
+# ============================================================================
+
+if __name__ == "__main__":
+    import sys
+    import uvicorn
+
+    # Cloud providers (Render, AWS) provide a PORT env var
+    port = int(os.environ.get("PORT", 8000))
+    
+    # Check if we should force stdio mode (for CLI/MCP subprocess)
+    # Otherwise default to HTTP for Cloud/Docker dashboard support
+    transport = os.environ.get("MCP_TRANSPORT", "http").lower()
+    
+    if transport == "stdio" or (not sys.stdin.isatty() and transport != "http"):
+        # ── Stdio mode (MCP subprocess) ───────────────────────────────────────
+        logger.info("Starting MCP server in Stdio mode")
+        mcp.run()
+    else:
+        # ── HTTP mode (Cloud / Docker / Dashboad) ─────────────────────────────
+        logger.info("Starting Intune Device Healer Unified Server", port=port)
+        logger.info(
+            "Endpoints ready",
+            mcp="/mcp",
+            dashboard="/",
+            webhook="/webhook/ticket",
+            health="/healthz"
+        )
+        uvicorn.run(
+            "server:app",
+            host="0.0.0.0",
+            port=port,
+            log_config=None,   # use structlog
+            timeout_graceful_shutdown=30,
+        )
