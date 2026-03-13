@@ -62,11 +62,17 @@ from core.config import settings
 class AtomicworkClient:
     """Client for Atomicwork REST API"""
 
-    def __init__(self):
-        self.config = settings
-        self.base_url = self.config.atomicwork_base_url.rstrip("/")
-        self.api_key = self.config.atomicwork_api_key
-        self.headers = {
+    @property
+    def base_url(self) -> str:
+        return settings.atomicwork_base_url.rstrip("/")
+
+    @property
+    def api_key(self) -> str:
+        return settings.atomicwork_api_key
+
+    @property
+    def headers(self) -> dict:
+        return {
             "x-api-key": self.api_key,
             "Content-Type": "application/json",
         }
@@ -80,7 +86,7 @@ class AtomicworkClient:
         url = f"{self.base_url}/api/v1/requests/{display_id}/activity-notes"
         payload = {
             "description": html,
-            "is_private": "true" if is_private else "false",
+            "is_private": is_private,
             "source": "PORTAL"
         }
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -853,12 +859,22 @@ async def process_ticket_background(display_id: str, event_type: str):
 
         if not device_info:
             logger.warning(f"Ticket {display_id} has no linked asset - skipping remediation")
+            await client.post_note(
+                display_id, 
+                "<b>Intune Healer:</b> No linked asset found on request. Please link a device asset to trigger auto-remediation.",
+                is_private=True
+            )
             return
 
         if not device_info.get("intune_device_id"):
             logger.warning(
                 f"Asset '{device_info['asset_name']}' has no Intune Device ID - "
                 f"skipping remediation"
+            )
+            await client.post_note(
+                display_id,
+                f"<b>Intune Healer:</b> Asset '{device_info['asset_name']}' is missing the 'Intune Device ID' field. Automated remediation skipped.",
+                is_private=True
             )
             return
 
