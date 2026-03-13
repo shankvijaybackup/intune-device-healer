@@ -20,12 +20,7 @@ class GraphAuthenticator:
         self.client_id = config.azure_client_id
         self.client_secret = config.azure_client_secret
 
-        # MSAL confidential client
-        self.msal_app = msal.ConfidentialClientApplication(
-            client_id=self.client_id,
-            client_credential=self.client_secret,
-            authority=f"https://login.microsoftonline.com/{self.tenant_id}"
-        )
+        self.msal_app = None
 
         self._token_cache = None
         self._token_expiry = 0
@@ -35,19 +30,35 @@ class GraphAuthenticator:
 
         logger.info("GraphAuthenticator initialized", tenant_id=self.tenant_id)
 
+    async def _ensure_app(self):
+        """Ensure MSAL app is initialized with current config"""
+        if self.msal_app and self.tenant_id == self.config.azure_tenant_id:
+            return
+
+        self.tenant_id = self.config.azure_tenant_id
+        self.client_id = self.config.azure_client_id
+        self.client_secret = self.config.azure_client_secret
+
+        if not all([self.tenant_id, self.client_id, self.client_secret]):
+            logger.warning("Azure credentials incomplete - skipping MSAL initialization")
+            return
+
+        authority = f"https://login.microsoftonline.com/{self.tenant_id}"
+        self.msal_app = msal.ConfidentialClientApplication(
+            client_id=self.client_id,
+            client_credential=self.client_secret,
+            authority=authority
+        )
+        logger.info("Graph MSAL app initialized", tenant_id=self.tenant_id)
+
     async def get_access_token(self, force_refresh: bool = False) -> str:
         """
         Get access token for Microsoft Graph API.
-
-        Args:
-            force_refresh: Force token refresh even if cached token is valid
-
-        Returns:
-            Access token string
-
-        Raises:
-            Exception: If authentication fails
         """
+        await self._ensure_app()
+        if not self.msal_app:
+            raise Exception("Cannot acquire token: Azure credentials not configured in Dashboard")
+
         current_time = time.time()
 
         # Return cached token if still valid

@@ -14,7 +14,8 @@ from core.config import settings
 
 router = APIRouter(prefix="/api/v1/devices", tags=["devices"])
 
-_auth = GraphAuthenticator(settings)
+def get_auth():
+    return GraphAuthenticator(settings)
 
 
 @router.get("")
@@ -26,7 +27,7 @@ async def list_devices(
     """
     Proxy to MS Graph – returns managed device list with compliance state.
     """
-    token = await _auth.get_token()
+    token = await get_auth().get_access_token()
     import httpx
 
     params: dict = {"$top": top, "$select": "id,deviceName,operatingSystem,complianceState,lastSyncDateTime,userPrincipalName,managedDeviceOwnerType"}
