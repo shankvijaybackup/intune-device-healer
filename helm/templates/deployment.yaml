@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "intune-device-healer.fullname" . }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ .Chart.AppVersion }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      containers:
+        - name: healer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: {{ include "intune-device-healer.fullname" . }}-env
+            - secretRef:
+                name: {{ include "intune-device-healer.fullname" . }}-secrets
+          {{- if .Values.rulesConfig.enabled }}
+          volumeMounts:
+            - name: rules-config
+              mountPath: /config
+              readOnly: true
+          {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- if .Values.rulesConfig.enabled }}
+      volumes:
+        - name: rules-config
+          configMap:
+            name: {{ include "intune-device-healer.fullname" . }}-rules
+      {{- end }}

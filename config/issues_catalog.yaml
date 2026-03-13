@@ -1,0 +1,1369 @@
+# =============================================================================
+# Intune Device Healer – Top 100 Issues Catalog
+# =============================================================================
+# Structure per issue:
+#   id          : unique issue number
+#   name        : short issue name
+#   description : what goes wrong
+#   lifecycle   : onboarding | daily | offboarding
+#   platforms   : list – windows | macos | ios | android | all
+#   severity    : critical | high | medium | low
+#   tier        : 1 (auto) | 2 (semi-auto) | 3 (manual/approval)
+#   tool        : MCP tool function name to call
+#   params      : default parameters (device_id always required at call time)
+#   tags        : searchable labels
+# =============================================================================
+
+issues:
+
+  # ===========================================================================
+  # SECTION 1: ONBOARDING  (Issues 1-15)
+  # ===========================================================================
+
+  - id: 1
+    name: "Windows Autopilot enrollment failure"
+    description: >
+      Device fails to complete Autopilot provisioning during OOBE.
+      Symptoms: stuck at setup screen, profile not delivered, AAD join fails.
+    lifecycle: onboarding
+    platforms: [windows]
+    severity: critical
+    tier: 1
+    tool: fix_enrollment_autopilot
+    params: {}
+    tags: [enrollment, autopilot, oobe, aad-join, windows]
+
+  - id: 2
+    name: "Apple ADE/DEP enrollment failure"
+    description: >
+      macOS or iOS device does not receive MDM enrollment profile during
+      Setup Assistant. ADE token may be stale or profile unassigned.
+    lifecycle: onboarding
+    platforms: [macos, ios]
+    severity: critical
+    tier: 1
+    tool: fix_enrollment_apple_ade
+    params: {}
+    tags: [enrollment, ade, dep, abm, macos, ios, setup-assistant]
+
+  - id: 3
+    name: "Android Enterprise enrollment failure"
+    description: >
+      Android device fails to enroll in Android Enterprise (Work Profile,
+      COPE, or COBO). Google Play sign-in blocked or enrollment token expired.
+    lifecycle: onboarding
+    platforms: [android]
+    severity: critical
+    tier: 1
+    tool: fix_enrollment_android
+    params: {}
+    tags: [enrollment, android-enterprise, work-profile, google-play]
+
+  - id: 4
+    name: "Corporate Wi-Fi profile not deployed"
+    description: >
+      Device cannot connect to corporate SSID because Wi-Fi configuration
+      profile (including 802.1x / SCEP cert) has not been delivered by Intune.
+    lifecycle: onboarding
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 1
+    tool: push_wifi_profile
+    params: {}
+    tags: [wifi, connectivity, profile, 802.1x, onboarding]
+
+  - id: 5
+    name: "VPN certificate / profile not deployed"
+    description: >
+      Corporate VPN client is not configured. VPN profile or its dependent
+      authentication certificate has not been pushed to the device.
+    lifecycle: onboarding
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 1
+    tool: push_vpn_profile
+    params: {}
+    tags: [vpn, connectivity, profile, certificate, onboarding]
+
+  - id: 6
+    name: "Work email profile not configured"
+    description: >
+      Mail/Outlook app is not automatically configured with the corporate
+      Exchange account. EAS profile not delivered or ActiveSync blocked.
+    lifecycle: onboarding
+    platforms: [ios, android]
+    severity: high
+    tier: 1
+    tool: push_email_profile
+    params: {}
+    tags: [email, exchange, eas, profile, outlook, onboarding]
+
+  - id: 7
+    name: "Required apps not installing from Company Portal"
+    description: >
+      Apps marked 'Required' in Intune are not installed on the device after
+      enrollment. Assignment may not have reached the device.
+    lifecycle: onboarding
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 1
+    tool: force_app_installations
+    params: {}
+    tags: [apps, company-portal, assignment, onboarding]
+
+  - id: 8
+    name: "Enrollment Status Page (ESP) stuck"
+    description: >
+      Windows Autopilot ESP is blocking user login because apps or policies
+      are taking too long to install (or fail silently).
+    lifecycle: onboarding
+    platforms: [windows]
+    severity: high
+    tier: 2
+    tool: fix_esp_stuck
+    params: {auto_approve: true}
+    tags: [esp, autopilot, windows, onboarding, oobe]
+
+  - id: 9
+    name: "Conditional Access blocking new device"
+    description: >
+      User cannot access M365 apps because CA policy requires a compliant or
+      registered device, but compliance has not yet been evaluated post-enrollment.
+    lifecycle: onboarding
+    platforms: [windows, macos, ios, android]
+    severity: critical
+    tier: 1
+    tool: fix_ca_new_device
+    params: {}
+    tags: [conditional-access, compliance, onboarding, aad]
+
+  - id: 10
+    name: "BitLocker / FileVault not encrypting after enrollment"
+    description: >
+      Device is non-compliant because disk encryption has not been enabled.
+      BitLocker (Windows) or FileVault (macOS) not activated post-enrollment.
+    lifecycle: onboarding
+    platforms: [windows, macos]
+    severity: critical
+    tier: 2
+    tool: enable_device_encryption
+    params: {}
+    tags: [bitlocker, filevault, encryption, compliance, security, onboarding]
+
+  - id: 11
+    name: "Azure AD device registration failure"
+    description: >
+      Device is not appearing in Azure AD > Devices. MDM policies targeting
+      AAD-registered devices won't apply; CA 'require registered device' fails.
+    lifecycle: onboarding
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: fix_azure_ad_registration
+    params: {}
+    tags: [aad, registration, hybrid-join, onboarding]
+
+  - id: 12
+    name: "Primary user not set on device"
+    description: >
+      User-targeted app and policy assignments do not reach the device because
+      no primary user (UDA) is set. Often seen after bulk enrollment.
+    lifecycle: onboarding
+    platforms: [windows, macos, ios, android]
+    severity: medium
+    tier: 1
+    tool: set_device_primary_user
+    params: {}
+    tags: [primary-user, uda, assignment, onboarding]
+
+  - id: 13
+    name: "Device not in correct Intune group"
+    description: >
+      Device is missing from the Azure AD group that policies and apps are
+      targeted to. Dynamic group rule may not have matched.
+    lifecycle: onboarding
+    platforms: [windows, macos, ios, android]
+    severity: medium
+    tier: 1
+    tool: assign_device_to_group
+    params: {}
+    tags: [groups, assignment, policies, onboarding]
+
+  - id: 14
+    name: "Company Portal not showing required apps after enrollment"
+    description: >
+      User opens Company Portal immediately after enrollment and sees no apps.
+      Assignment re-evaluation needed.
+    lifecycle: onboarding
+    platforms: [windows, macos, ios, android]
+    severity: medium
+    tier: 1
+    tool: sync_app_assignments
+    params: {}
+    tags: [company-portal, apps, sync, onboarding]
+
+  - id: 15
+    name: "APNs certificate expired – iOS MDM commands not delivered"
+    description: >
+      Apple Push Notification Service certificate in Intune has expired or is
+      expiring. No MDM commands (apps, profiles, sync) will reach iOS devices.
+    lifecycle: onboarding
+    platforms: [ios, macos]
+    severity: critical
+    tier: 1
+    tool: check_apns_certificate
+    params: {}
+    tags: [apns, ios, macos, mdm, certificate, enrollment]
+
+  # ===========================================================================
+  # SECTION 2: AUTHENTICATION & IDENTITY  (Issues 16-25)
+  # ===========================================================================
+
+  - id: 16
+    name: "MFA not configured / MFA registration loop"
+    description: >
+      User cannot access M365 because MFA is not registered, or is stuck in
+      the MFA registration loop after CA policy enforcement.
+    lifecycle: daily
+    platforms: [all]
+    severity: critical
+    tier: 1
+    tool: fix_mfa_setup
+    params: {}
+    tags: [mfa, identity, conditional-access, authenticator, daily]
+
+  - id: 17
+    name: "Password expired – user account locked"
+    description: >
+      User account is locked due to password expiry or too many failed login
+      attempts. SSPR may not be registered.
+    lifecycle: daily
+    platforms: [all]
+    severity: critical
+    tier: 2
+    tool: unlock_and_reset_password
+    params: {auto_approve: true}
+    tags: [password, locked, sspr, identity, daily]
+
+  - id: 18
+    name: "SSO not working – Primary Refresh Token (PRT) invalid"
+    description: >
+      Windows user gets prompted for credentials on every M365 app sign-in.
+      PRT is missing or invalid; AAD join state broken.
+    lifecycle: daily
+    platforms: [windows]
+    severity: high
+    tier: 2
+    tool: fix_windows_updates
+    params: {auto_approve: true}
+    tags: [sso, prt, aad-join, windows, identity, daily]
+
+  - id: 19
+    name: "Microsoft Authenticator issues – push not arriving"
+    description: >
+      MFA push notifications are not arriving in Authenticator. Old device
+      registration may be stale or notifications disabled.
+    lifecycle: daily
+    platforms: [all]
+    severity: high
+    tier: 1
+    tool: fix_authenticator
+    params: {}
+    tags: [authenticator, mfa, push, notifications, daily]
+
+  - id: 20
+    name: "Conditional Access blocking sign-in (known device)"
+    description: >
+      A previously working device is now blocked by CA. Compliance may have
+      lapsed, token revoked, or CA policy changed.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: critical
+    tier: 1
+    tool: fix_ca_new_device
+    params: {}
+    tags: [conditional-access, compliance, sign-in, daily]
+
+  - id: 21
+    name: "Azure AD account disabled / blocked from sign-in"
+    description: >
+      User cannot sign in because their Azure AD account is disabled.
+      May be a mistaken offboarding or policy action.
+    lifecycle: daily
+    platforms: [all]
+    severity: critical
+    tier: 2
+    tool: unlock_and_reset_password
+    params: {auto_approve: true}
+    tags: [account, disabled, azure-ad, identity, daily]
+
+  - id: 22
+    name: "SSPR (self-service password reset) not working"
+    description: >
+      User cannot reset their own password via SSPR portal. Authentication
+      methods for SSPR not registered or SSPR not licensed.
+    lifecycle: daily
+    platforms: [all]
+    severity: high
+    tier: 1
+    tool: fix_mfa_setup
+    params: {}
+    tags: [sspr, password, reset, identity, daily]
+
+  - id: 23
+    name: "Hybrid Azure AD Join broken after domain change"
+    description: >
+      On-premises domain-joined device is no longer hybrid-joined to Azure AD.
+      Affects PRT, CA policies, and co-management.
+    lifecycle: daily
+    platforms: [windows]
+    severity: high
+    tier: 1
+    tool: fix_azure_ad_registration
+    params: {}
+    tags: [hybrid-join, aad, domain, windows, daily]
+
+  - id: 24
+    name: "Certificate-based authentication failure"
+    description: >
+      SCEP/PKCS certificate used for Wi-Fi, VPN, or app auth has expired or
+      was not issued. Device loses corporate network access.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 1
+    tool: renew_scep_certificate
+    params: {}
+    tags: [certificate, scep, pkcs, vpn, wifi, auth, daily]
+
+  - id: 25
+    name: "MFA phone number changed – old device blocked"
+    description: >
+      User got a new phone and MFA is still registered on the old device.
+      Cannot approve sign-in requests.
+    lifecycle: daily
+    platforms: [all]
+    severity: high
+    tier: 1
+    tool: fix_authenticator
+    params: {}
+    tags: [mfa, authenticator, phone, daily]
+
+  # ===========================================================================
+  # SECTION 3: CONNECTIVITY  (Issues 26-38)
+  # ===========================================================================
+
+  - id: 26
+    name: "Corporate Wi-Fi disconnecting / not reconnecting"
+    description: >
+      Device keeps dropping corporate Wi-Fi or cannot reconnect after sleep.
+      Profile may be corrupted or RADIUS certificate issue.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: push_wifi_profile
+    params: {}
+    tags: [wifi, connectivity, 802.1x, daily]
+
+  - id: 27
+    name: "VPN not connecting"
+    description: >
+      Corporate VPN client fails to establish tunnel. Certificate may be
+      expired, VPN profile corrupted, or gateway unreachable.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 1
+    tool: fix_vpn_profile
+    params: {}
+    tags: [vpn, connectivity, certificate, daily]
+
+  - id: 28
+    name: "Outlook disconnected / operating in offline mode"
+    description: >
+      Outlook is stuck in Offline Mode or shows 'Disconnected' status.
+      Exchange connectivity or OST/profile corruption.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 2
+    tool: fix_outlook_mac
+    params: {}
+    tags: [outlook, email, offline, exchange, daily]
+
+  - id: 29
+    name: "Microsoft Teams audio / video not working in calls"
+    description: >
+      Teams calls have no audio, camera not detected, or call drops.
+      Driver issues, permissions, or Teams media stack corruption.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: fix_spotlight_index
+    params: {}
+    tags: [teams, audio, video, camera, microphone, daily]
+
+  - id: 30
+    name: "Network drive mapping failures"
+    description: >
+      Mapped network drives (\\server\share) fail to connect or reconnect at
+      login. SMB connectivity or credential caching issue.
+    lifecycle: daily
+    platforms: [windows]
+    severity: medium
+    tier: 1
+    tool: reset_network_stack
+    params: {}
+    tags: [network-drive, smb, credentials, windows, daily]
+
+  - id: 31
+    name: "Printer not accessible / print jobs stuck"
+    description: >
+      User cannot print. Print spooler service crashed, printer driver missing,
+      or print job stuck in queue.
+    lifecycle: daily
+    platforms: [windows]
+    severity: medium
+    tier: 1
+    tool: fix_printer_spooler
+    params: {}
+    tags: [printer, spooler, print, windows, daily]
+
+  - id: 32
+    name: "DNS resolution failures"
+    description: >
+      Device cannot resolve internal DNS names. DNS cache corrupt, DNS server
+      unreachable, or DNSSEC misconfiguration.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: repair_dns_settings
+    params: {}
+    tags: [dns, connectivity, network, daily]
+
+  - id: 33
+    name: "Proxy misconfiguration causing web/app access failure"
+    description: >
+      Applications cannot reach internet or intranet due to incorrect proxy
+      settings. Common after OS upgrade or re-enrollment.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 1
+    tool: reset_network_settings
+    params: {}
+    tags: [proxy, connectivity, network, daily]
+
+  - id: 34
+    name: "OneDrive sync errors / files stuck"
+    description: >
+      OneDrive files are not syncing. Sync client may be in error state,
+      account conflict, or SharePoint connectivity issue.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 1
+    tool: fix_onedrive_sync
+    params: {}
+    tags: [onedrive, sync, sharepoint, files, daily]
+
+  - id: 35
+    name: "Bluetooth connectivity issues"
+    description: >
+      Bluetooth headset, mouse, or keyboard not pairing or keeps disconnecting.
+      Driver or Bluetooth stack issue.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: low
+    tier: 1
+    tool: fix_bluetooth_connectivity
+    params: {}
+    tags: [bluetooth, hardware, peripherals, daily]
+
+  - id: 36
+    name: "IPv6 conflict causing intermittent connectivity"
+    description: >
+      IPv6 addressing conflict causes intermittent application or network
+      failures. Common in hybrid environments.
+    lifecycle: daily
+    platforms: [windows]
+    severity: medium
+    tier: 1
+    tool: fix_network_driver
+    params: {}
+    tags: [ipv6, network, connectivity, windows, daily]
+
+  - id: 37
+    name: "802.1x authentication failure on wired/wireless network"
+    description: >
+      Device fails 802.1x port authentication. RADIUS certificate mismatch,
+      NPS policy, or device certificate expired.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: renew_scep_certificate
+    params: {}
+    tags: [802.1x, radius, certificate, wired, wireless, daily]
+
+  - id: 38
+    name: "VPN split tunneling misconfiguration"
+    description: >
+      All traffic routing through VPN causing performance degradation, or
+      split tunneling not working so corporate resources unreachable.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: medium
+    tier: 1
+    tool: fix_vpn_profile
+    params: {}
+    tags: [vpn, split-tunneling, performance, daily]
+
+  # ===========================================================================
+  # SECTION 4: M365 PRODUCTIVITY  (Issues 39-52)
+  # ===========================================================================
+
+  - id: 39
+    name: "Outlook not syncing email"
+    description: >
+      Outlook inbox is not receiving new email. Exchange sync issue,
+      OST file corruption, or account authentication failure.
+    lifecycle: daily
+    platforms: [windows]
+    severity: high
+    tier: 2
+    tool: repair_outlook_pst
+    params: {}
+    tags: [outlook, email, sync, exchange, ost, daily]
+
+  - id: 40
+    name: "Outlook calendar not syncing"
+    description: >
+      Calendar appointments not appearing or missing in Outlook.
+      Permissions, delegate access, or sync conflict.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 2
+    tool: rebuild_outlook_profile
+    params: {}
+    tags: [outlook, calendar, sync, exchange, daily]
+
+  - id: 41
+    name: "Microsoft Teams not loading / crashing on start"
+    description: >
+      Teams app fails to load, crashes on launch, or gets stuck on loading
+      screen. Cache corruption or app file issue.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: fix_teams_cache
+    params: {}
+    tags: [teams, crash, loading, cache, daily]
+
+  - id: 42
+    name: "OneDrive sync conflicts"
+    description: >
+      Files have conflicting copies due to offline editing or multiple
+      device sync. User needs to resolve conflicts.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 1
+    tool: fix_onedrive_sync
+    params: {}
+    tags: [onedrive, sync, conflict, files, daily]
+
+  - id: 43
+    name: "OneDrive quota exceeded"
+    description: >
+      User has exceeded their OneDrive storage quota. Sync stops and files
+      cannot be saved to OneDrive.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: medium
+    tier: 1
+    tool: get_device_health_score
+    params: {}
+    tags: [onedrive, quota, storage, daily]
+
+  - id: 44
+    name: "Office license activation failure"
+    description: >
+      Microsoft Office apps show 'Unlicensed Product' or require activation.
+      License not assigned, sign-in issue, or activation server unreachable.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 2
+    tool: fix_office_installation
+    params: {}
+    tags: [office, license, activation, m365, daily]
+
+  - id: 45
+    name: "Word / Excel / PowerPoint crashes on open"
+    description: >
+      Office apps crash immediately on launch or when opening documents.
+      Corrupted installation, add-in conflict, or COM registration issue.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 2
+    tool: fix_office_installation
+    params: {}
+    tags: [office, word, excel, powerpoint, crash, daily]
+
+  - id: 46
+    name: "SharePoint / Teams site permission denied"
+    description: >
+      User receives 'Access Denied' when accessing SharePoint site or Teams
+      channel. Group membership or permission inheritance issue.
+    lifecycle: daily
+    platforms: [all]
+    severity: high
+    tier: 1
+    tool: get_group_members
+    params: {}
+    tags: [sharepoint, teams, permissions, access, daily]
+
+  - id: 47
+    name: "Microsoft Copilot not working / license not assigned"
+    description: >
+      Copilot features absent in M365 apps. Copilot license not assigned or
+      Azure AD group assignment delayed.
+    lifecycle: daily
+    platforms: [all]
+    severity: medium
+    tier: 1
+    tool: get_user_mfa_status
+    params: {}
+    tags: [copilot, license, m365, daily]
+
+  - id: 48
+    name: "Office / M365 apps not updating"
+    description: >
+      Office applications are stuck on old version. Update ring policy
+      conflict, CDN unreachable, or Click-to-Run service issue.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 2
+    tool: fix_office_installation
+    params: {}
+    tags: [office, updates, click-to-run, m365, daily]
+
+  - id: 49
+    name: "Teams cannot join meetings (lobby / permission error)"
+    description: >
+      User is stuck in meeting lobby or gets 'You can't join this meeting'.
+      Teams policy, guest access, or sensitivity label restriction.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 1
+    tool: fix_teams_cache
+    params: {}
+    tags: [teams, meetings, policy, lobby, daily]
+
+  - id: 50
+    name: "Outlook email stuck in Outbox"
+    description: >
+      Sent emails are stuck in Outbox and not delivered. OST corruption,
+      large attachment, or Outlook not in online mode.
+    lifecycle: daily
+    platforms: [windows]
+    severity: medium
+    tier: 2
+    tool: repair_outlook_pst
+    params: {}
+    tags: [outlook, email, outbox, ost, daily]
+
+  - id: 51
+    name: "Email signature not appearing in Outlook"
+    description: >
+      Company-wide email signature injected via transport rule or Exclaimer
+      is not showing for the user.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: low
+    tier: 1
+    tool: rebuild_outlook_profile
+    params: {}
+    tags: [outlook, email, signature, daily]
+
+  - id: 52
+    name: "Teams microphone or camera not working in meetings"
+    description: >
+      Teams cannot access microphone or camera. Device permissions denied,
+      driver issue, or another app holding exclusive access.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: get_performance_diagnostics_windows
+    params: {}
+    tags: [teams, microphone, camera, audio, video, permissions, daily]
+
+  # ===========================================================================
+  # SECTION 5: PERFORMANCE & SYSTEM HEALTH  (Issues 53-65)
+  # ===========================================================================
+
+  - id: 53
+    name: "Device running slow – high CPU usage"
+    description: >
+      Device is sluggish due to a runaway process or excessive background
+      activity (AV scan, Windows Update, etc.).
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 1
+    tool: fix_high_cpu_usage
+    params: {}
+    tags: [performance, cpu, slow, daily]
+
+  - id: 54
+    name: "Low disk space causing app / OS failures"
+    description: >
+      Disk is nearly full preventing app installs, OS updates, and causing
+      crashes. Temp files and old profiles consuming space.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: cleanup_disk_space
+    params: {}
+    tags: [disk, storage, space, performance, daily]
+
+  - id: 55
+    name: "High RAM usage / memory exhaustion"
+    description: >
+      Device is using nearly all RAM causing heavy paging and slow response.
+      Memory leak in application or incorrect pagefile settings.
+    lifecycle: daily
+    platforms: [windows]
+    severity: medium
+    tier: 1
+    tool: optimize_memory
+    params: {}
+    tags: [ram, memory, performance, pagefile, daily]
+
+  - id: 56
+    name: "Battery draining fast"
+    description: >
+      Laptop battery depletes unusually quickly. Background process keeping
+      CPU active or battery health degraded.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 1
+    tool: get_battery_health_windows
+    params: {}
+    tags: [battery, power, performance, laptop, daily]
+
+  - id: 57
+    name: "Slow boot time"
+    description: >
+      Device takes excessively long to boot. Too many startup items, slow
+      disk, or Windows Update pending restart.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 1
+    tool: optimize_startup
+    params: {}
+    tags: [boot, startup, performance, daily]
+
+  - id: 58
+    name: "Application crash loop"
+    description: >
+      A specific application crashes repeatedly. Corrupted installation,
+      missing dependency, or profile corruption.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 2
+    tool: reinstall_app
+    params: {}
+    tags: [crash, app, install, daily]
+
+  - id: 59
+    name: "Windows Blue Screen of Death (BSOD)"
+    description: >
+      Device crashes to BSOD (Stop error). Driver incompatibility, RAM
+      failure, or corrupted system files.
+    lifecycle: daily
+    platforms: [windows]
+    severity: critical
+    tier: 2
+    tool: repair_system_files
+    params: {}
+    tags: [bsod, crash, driver, windows, daily]
+
+  - id: 60
+    name: "macOS kernel panic"
+    description: >
+      Mac crashes with 'Your computer restarted because of a problem'.
+      Driver, RAM, or NVRAM issue.
+    lifecycle: daily
+    platforms: [macos]
+    severity: critical
+    tier: 1
+    tool: reset_nvram
+    params: {}
+    tags: [kernel-panic, crash, macos, nvram, daily]
+
+  - id: 61
+    name: "Device not waking from sleep"
+    description: >
+      Device requires hard power cycle to wake from sleep/hibernate.
+      Power management or driver issue.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: medium
+    tier: 1
+    tool: reset_smc
+    params: {}
+    tags: [sleep, wake, power, daily]
+
+  - id: 62
+    name: "Print spooler service crashed"
+    description: >
+      Print Spooler service is stopped or crashes. PrintNightmare residual
+      or corrupted driver causing spooler failure.
+    lifecycle: daily
+    platforms: [windows]
+    severity: medium
+    tier: 1
+    tool: fix_printer_spooler
+    params: {}
+    tags: [printer, spooler, print, windows, daily]
+
+  - id: 63
+    name: "High disk I/O causing system slowness"
+    description: >
+      Disk activity at 100% causing freezes. Defragmentation needed,
+      SMART pre-failure, or rogue process doing excessive writes.
+    lifecycle: daily
+    platforms: [windows]
+    severity: high
+    tier: 2
+    tool: repair_disk_errors
+    params: {}
+    tags: [disk, io, performance, chkdsk, daily]
+
+  - id: 64
+    name: "Device overheating"
+    description: >
+      Device thermal throttling due to dust, blocked vents, or runaway
+      process keeping CPU/GPU at maximum load.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: high
+    tier: 1
+    tool: run_performance_probe
+    params: {}
+    tags: [thermal, overheating, cpu, hardware, daily]
+
+  - id: 65
+    name: "Slow network performance on device (not network-wide)"
+    description: >
+      Device-specific slow network despite healthy network infrastructure.
+      Corrupted TCP/IP stack, offload settings, or NIC driver issue.
+    lifecycle: daily
+    platforms: [windows]
+    severity: medium
+    tier: 1
+    tool: reset_network_stack
+    params: {}
+    tags: [network, tcp, performance, nic, daily]
+
+  # ===========================================================================
+  # SECTION 6: SECURITY & COMPLIANCE  (Issues 66-77)
+  # ===========================================================================
+
+  - id: 66
+    name: "Device marked non-compliant in Intune"
+    description: >
+      Device is non-compliant blocking CA-protected apps. Root cause may be
+      encryption, OS version, AV, or custom compliance setting.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: critical
+    tier: 1
+    tool: diagnose_compliance
+    params: {}
+    tags: [compliance, conditional-access, daily]
+
+  - id: 67
+    name: "Antivirus definitions outdated"
+    description: >
+      Defender or third-party AV has stale definitions. Device non-compliant
+      for security compliance policy.
+    lifecycle: daily
+    platforms: [windows]
+    severity: high
+    tier: 1
+    tool: quick_scan_defender
+    params: {}
+    tags: [antivirus, defender, definitions, security, daily]
+
+  - id: 68
+    name: "Windows Defender disabled or tampered"
+    description: >
+      Real-time protection or Defender service is disabled. Compliance policy
+      violation; potential malware presence.
+    lifecycle: daily
+    platforms: [windows]
+    severity: critical
+    tier: 1
+    tool: fix_windows_defender
+    params: {}
+    tags: [defender, antivirus, security, windows, daily]
+
+  - id: 69
+    name: "Firewall disabled on device"
+    description: >
+      Host-based firewall (Windows Firewall or macOS Application Firewall)
+      is disabled. Security and compliance violation.
+    lifecycle: daily
+    platforms: [windows, macos]
+    severity: critical
+    tier: 1
+    tool: enable_firewall_mac
+    params: {}
+    tags: [firewall, security, compliance, daily]
+
+  - id: 70
+    name: "BitLocker recovery key not backed up to Azure AD"
+    description: >
+      Device is encrypted but recovery key is not escrowed in Azure AD/Intune.
+      Key lost = data unrecoverable if device fails.
+    lifecycle: daily
+    platforms: [windows]
+    severity: high
+    tier: 1
+    tool: get_bitlocker_recovery_key
+    params: {}
+    tags: [bitlocker, recovery-key, encryption, azure-ad, daily]
+
+  - id: 71
+    name: "FileVault recovery key not escrowed to Intune"
+    description: >
+      Mac is encrypted with FileVault but the personal recovery key is not
+      stored in Intune. Same risk as issue 70 for Mac.
+    lifecycle: daily
+    platforms: [macos]
+    severity: high
+    tier: 1
+    tool: repair_disk_permissions
+    params: {}
+    tags: [filevault, recovery-key, encryption, macos, daily]
+
+  - id: 72
+    name: "OS version out of compliance – update needed"
+    description: >
+      Device running OS version below minimum required by compliance policy.
+      Security patches not applied within grace period.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 2
+    tool: trigger_os_update
+    params: {}
+    tags: [os-update, compliance, security, patch, daily]
+
+  - id: 73
+    name: "Unsanctioned / blocked application detected"
+    description: >
+      A restricted application is installed on the device violating policy.
+      Compliance policy's restricted app list is triggered.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 2
+    tool: block_unsanctioned_app
+    params: {auto_approve: true}
+    tags: [app-control, compliance, security, daily]
+
+  - id: 74
+    name: "Jailbroken or rooted device detected"
+    description: >
+      iOS device is jailbroken or Android device is rooted. Device poses
+      critical security risk; corporate access must be revoked immediately.
+    lifecycle: daily
+    platforms: [ios, android]
+    severity: critical
+    tier: 3
+    tool: quarantine_device
+    params: {auto_approve: true}
+    tags: [jailbreak, root, security, compliance, ios, android, daily]
+
+  - id: 75
+    name: "Security baseline settings drifted"
+    description: >
+      Device configuration has drifted from the security baseline (e.g., SMB
+      signing disabled, PS v2 enabled, LLMNR active).
+    lifecycle: daily
+    platforms: [windows]
+    severity: high
+    tier: 1
+    tool: disable_smb_v1
+    params: {}
+    tags: [security-baseline, hardening, drift, windows, daily]
+
+  - id: 76
+    name: "LAPS (Local Admin Password Solution) not working"
+    description: >
+      Local administrator password is not rotating or is inaccessible from
+      Intune. LAPS policy may not be configured or applied.
+    lifecycle: daily
+    platforms: [windows]
+    severity: high
+    tier: 1
+    tool: audit_local_admin_accounts
+    params: {}
+    tags: [laps, local-admin, password, security, windows, daily]
+
+  - id: 77
+    name: "Device certificate expired"
+    description: >
+      SCEP/PKCS device certificate used for authentication has expired.
+      Wi-Fi, VPN, and NDES-based auth will fail.
+    lifecycle: daily
+    platforms: [windows, macos, ios, android]
+    severity: high
+    tier: 1
+    tool: renew_device_certificate
+    params: {}
+    tags: [certificate, scep, pkcs, expiry, daily]
+
+  # ===========================================================================
+  # SECTION 7: MOBILE – iOS / iPadOS  (Issues 78-84)
+  # ===========================================================================
+
+  - id: 78
+    name: "iOS ADE enrollment not completing"
+    description: >
+      iPhone or iPad not receiving MDM profile during Setup Assistant.
+      ADE sync token stale or enrollment profile unassigned in ABM.
+    lifecycle: onboarding
+    platforms: [ios]
+    severity: critical
+    tier: 1
+    tool: fix_enrollment_ios
+    params: {}
+    tags: [enrollment, ios, ade, abm, setup-assistant, onboarding]
+
+  - id: 79
+    name: "Company Portal app crashing on iOS"
+    description: >
+      Company Portal keeps crashing on launch or after iOS update.
+      App update needed or cache corruption.
+    lifecycle: daily
+    platforms: [ios]
+    severity: high
+    tier: 1
+    tool: fix_company_portal_ios
+    params: {}
+    tags: [company-portal, ios, crash, app, daily]
+
+  - id: 80
+    name: "iOS email profile not syncing"
+    description: >
+      Mail app not receiving corporate email. Exchange ActiveSync profile
+      error or authentication rejection.
+    lifecycle: daily
+    platforms: [ios]
+    severity: high
+    tier: 2
+    tool: fix_email_profile_ios
+    params: {}
+    tags: [email, exchange, eas, ios, profile, daily]
+
+  - id: 81
+    name: "iOS app not available in Company Portal"
+    description: >
+      Required app is missing from Company Portal on iPhone/iPad. Assignment
+      not reaching device or Google Play/App Store sync pending.
+    lifecycle: daily
+    platforms: [ios]
+    severity: medium
+    tier: 1
+    tool: fix_app_assignment_ios
+    params: {}
+    tags: [app, ios, company-portal, assignment, daily]
+
+  - id: 82
+    name: "iOS OS update not applying"
+    description: >
+      iPhone/iPad stuck on old iOS version. Compliance policy requiring newer
+      version; update not installing automatically.
+    lifecycle: daily
+    platforms: [ios]
+    severity: high
+    tier: 2
+    tool: trigger_os_update_ios
+    params: {}
+    tags: [ios, os-update, compliance, patch, daily]
+
+  - id: 83
+    name: "Screen Time / MDM supervision policy conflict on iOS"
+    description: >
+      Screen Time restrictions are interfering with corporate app access, or
+      device supervision profile conflict detected.
+    lifecycle: daily
+    platforms: [ios]
+    severity: medium
+    tier: 1
+    tool: fix_screen_time_policy_ios
+    params: {}
+    tags: [screen-time, supervision, ios, policy, daily]
+
+  - id: 84
+    name: "APNs push notifications not working on iOS"
+    description: >
+      iOS devices not receiving MDM commands or push notifications from
+      Company Portal. APNs certificate issue in Intune tenant.
+    lifecycle: daily
+    platforms: [ios]
+    severity: critical
+    tier: 1
+    tool: check_apns_certificate
+    params: {}
+    tags: [apns, ios, push, mdm, certificate, daily]
+
+  # ===========================================================================
+  # SECTION 8: MOBILE – Android  (Issues 85-90)
+  # ===========================================================================
+
+  - id: 85
+    name: "Android Enterprise enrollment failure"
+    description: >
+      Android device cannot complete enrollment. Google Play Services blocked,
+      enrollment token expired, or wrong enrollment type configured.
+    lifecycle: onboarding
+    platforms: [android]
+    severity: critical
+    tier: 1
+    tool: fix_enrollment_android
+    params: {}
+    tags: [enrollment, android, google-play, work-profile, onboarding]
+
+  - id: 86
+    name: "Android work profile not creating"
+    description: >
+      Work profile setup fails or work profile has been removed by user
+      and not re-created via Company Portal.
+    lifecycle: daily
+    platforms: [android]
+    severity: high
+    tier: 2
+    tool: fix_work_profile_android
+    params: {}
+    tags: [work-profile, android, byod, company-portal, daily]
+
+  - id: 87
+    name: "Android app not installing in work profile"
+    description: >
+      Required app not appearing in managed Google Play or work profile.
+      App assignment not reaching device or approval pending.
+    lifecycle: daily
+    platforms: [android]
+    severity: medium
+    tier: 1
+    tool: fix_app_assignment_android
+    params: {}
+    tags: [app, android, work-profile, google-play, daily]
+
+  - id: 88
+    name: "Android email profile not syncing"
+    description: >
+      Work email not synchronizing on Android. Exchange ActiveSync profile
+      error or authentication issue in work profile.
+    lifecycle: daily
+    platforms: [android]
+    severity: high
+    tier: 2
+    tool: fix_email_profile_android
+    params: {}
+    tags: [email, exchange, android, work-profile, eas, daily]
+
+  - id: 89
+    name: "Android OS / security patch update pending"
+    description: >
+      Android device security patch level is below policy minimum.
+      Device non-compliant; update not being applied automatically.
+    lifecycle: daily
+    platforms: [android]
+    severity: high
+    tier: 2
+    tool: trigger_os_update_android
+    params: {auto_approve: true}
+    tags: [android, os-update, security-patch, compliance, daily]
+
+  - id: 90
+    name: "Company Portal crashing on Android"
+    description: >
+      Company Portal app crashes on Android. App update needed, cache
+      corruption, or Google Play Services outdated.
+    lifecycle: daily
+    platforms: [android]
+    severity: high
+    tier: 1
+    tool: fix_company_portal_android
+    params: {}
+    tags: [company-portal, android, crash, app, daily]
+
+  # ===========================================================================
+  # SECTION 9: OFFBOARDING  (Issues 91-100)
+  # ===========================================================================
+
+  - id: 91
+    name: "Device not wiped after employee departure"
+    description: >
+      Departed employee's device still has corporate data. Wipe or retire
+      action not executed during offboarding.
+    lifecycle: offboarding
+    platforms: [windows, macos, ios, android]
+    severity: critical
+    tier: 3
+    tool: wipe_offboarded_device
+    params: {auto_approve: true}
+    tags: [wipe, offboarding, security, data-protection]
+
+  - id: 92
+    name: "User data not backed up before device wipe"
+    description: >
+      OneDrive sync not confirmed before wipe command. Critical work files
+      may be lost if not transferred first.
+    lifecycle: offboarding
+    platforms: [windows, macos]
+    severity: high
+    tier: 2
+    tool: transfer_onedrive_data
+    params: {auto_approve: true}
+    tags: [onedrive, backup, offboarding, data-protection]
+
+  - id: 93
+    name: "Autopilot device not reset for next employee"
+    description: >
+      Corporate Windows device needs to be reprovisioned for a new hire.
+      Autopilot Reset keeps enrollment data so no full factory wipe needed.
+    lifecycle: offboarding
+    platforms: [windows]
+    severity: medium
+    tier: 3
+    tool: autopilot_reset
+    params: {auto_approve: true}
+    tags: [autopilot, reset, reprovision, offboarding, windows]
+
+  - id: 94
+    name: "Stale Azure AD device object after offboarding"
+    description: >
+      Old device still listed in Azure AD consuming license and cluttering
+      directory. Should be removed after device wipe.
+    lifecycle: offboarding
+    platforms: [windows, macos, ios, android]
+    severity: medium
+    tier: 2
+    tool: cleanup_aad_device
+    params: {auto_approve: true}
+    tags: [azure-ad, device-cleanup, offboarding]
+
+  - id: 95
+    name: "M365 license not reclaimed after user departure"
+    description: >
+      Departed user still has M365 / Intune / Copilot license assigned.
+      License billing continues unnecessarily.
+    lifecycle: offboarding
+    platforms: [all]
+    severity: medium
+    tier: 2
+    tool: reclaim_user_licenses
+    params: {auto_approve: true}
+    tags: [license, m365, billing, offboarding]
+
+  - id: 96
+    name: "User access not revoked post-departure"
+    description: >
+      Departed employee's refresh tokens still valid; account not disabled.
+      Corporate data accessible from personal devices.
+    lifecycle: offboarding
+    platforms: [all]
+    severity: critical
+    tier: 2
+    tool: revoke_user_access
+    params: {auto_approve: true}
+    tags: [access, revoke, tokens, account, security, offboarding]
+
+  - id: 97
+    name: "Device still in Intune after factory reset"
+    description: >
+      Device record persists in Intune after factory reset consuming license.
+      Ghost entry needs to be removed manually.
+    lifecycle: offboarding
+    platforms: [windows, macos, ios, android]
+    severity: low
+    tier: 2
+    tool: remove_from_intune
+    params: {auto_approve: true}
+    tags: [intune, cleanup, ghost-device, license, offboarding]
+
+  - id: 98
+    name: "OneDrive data not transferred to manager"
+    description: >
+      Departed user's OneDrive files not handed over to manager before
+      account deletion. Critical work files may be inaccessible.
+    lifecycle: offboarding
+    platforms: [all]
+    severity: high
+    tier: 2
+    tool: transfer_onedrive_data
+    params: {auto_approve: true}
+    tags: [onedrive, data-transfer, offboarding, manager]
+
+  - id: 99
+    name: "Shared device not re-provisioned for next user"
+    description: >
+      Shared or kiosk device still associated with previous employee. Apps
+      and policies not re-targeted to new user.
+    lifecycle: offboarding
+    platforms: [windows, macos, ios, android]
+    severity: medium
+    tier: 2
+    tool: reprovision_shared_device
+    params: {}
+    tags: [shared-device, kiosk, reprovision, offboarding]
+
+  - id: 100
+    name: "BitLocker recovery key not verified before offboarding wipe"
+    description: >
+      Recovery key not confirmed in Azure AD before device wipe. If wipe
+      fails mid-process, data may be unrecoverable.
+    lifecycle: offboarding
+    platforms: [windows]
+    severity: high
+    tier: 1
+    tool: verify_bitlocker_escrow
+    params: {}
+    tags: [bitlocker, recovery-key, offboarding, encryption]
+
+# =============================================================================
+# LIFECYCLE STAGE SUMMARY
+# =============================================================================
+# onboarding  : issues 1-15, 78, 85          (17 issues)
+# daily       : issues 16-77, 79-84, 86-90   (74 issues)
+# offboarding : issues 91-100                 (10 issues)
+#
+# PLATFORM COVERAGE
+# windows  : 1,3-5,8-13,18,23-32,34-37,39-45,48,50-65,67-70,72-77,91-94,96-100
+# macos    : 2,4-6,9-13,23-29,32-34,37,40-42,44-45,48,51,53-54,56-61,64-65,
+#            69,71-72,74,77,91-94,96-100
+# ios      : 2,4-7,9,12-16,19-20,24-27,38,43,46-47,66,72-74,77-84,91,94-99
+# android  : 3-7,9,12-13,19-20,24-27,38,43,46-47,66,72-74,77,85-91,94-99
+# all      : 16-17,19-22,25,43,46-47,95-96,98
+# =============================================================================

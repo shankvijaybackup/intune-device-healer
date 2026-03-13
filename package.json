@@ -1,0 +1,25 @@
+{
+  "name": "intune-device-healer",
+  "version": "1.0.0",
+  "description": "Intune Device Healer - AWS Lambda Deployment",
+  "scripts": {
+    "deploy": "./deploy-aws.sh prod us-east-1",
+    "deploy:dev": "./deploy-aws.sh dev us-east-1",
+    "logs": "serverless logs -f api -t --stage prod",
+    "remove": "serverless remove --stage prod"
+  },
+  "keywords": [
+    "intune",
+    "device-management",
+    "microsoft-graph",
+    "aws-lambda",
+    "automation"
+  ],
+  "author": "Atom Banking",
+  "license": "MIT",
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-python-requirements": "^6.1.0",
+    "serverless-prune-plugin": "^2.0.2"
+  }
+}

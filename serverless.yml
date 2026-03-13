@@ -1,0 +1,155 @@
+service: intune-device-healer
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  stage: ${opt:stage, 'prod'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 512
+  timeout: 30
+
+  # Environment variables (secrets managed via AWS Systems Manager Parameter Store)
+  environment:
+    AZURE_TENANT_ID: ${ssm:/intune-healer/${self:provider.stage}/azure-tenant-id}
+    AZURE_CLIENT_ID: ${ssm:/intune-healer/${self:provider.stage}/azure-client-id}
+    AZURE_CLIENT_SECRET: ${ssm:/intune-healer/${self:provider.stage}/azure-client-secret}
+    GRAPH_API_BASE_URL: https://graph.microsoft.com/v1.0
+    GRAPH_API_BETA_URL: https://graph.microsoft.com/beta
+    ATOMICWORK_API_KEY: ${ssm:/intune-healer/${self:provider.stage}/atomicwork-api-key}
+    ATOMICWORK_BASE_URL: ${ssm:/intune-healer/${self:provider.stage}/atomicwork-base-url}
+    MCP_API_KEY: ${ssm:/intune-healer/${self:provider.stage}/mcp-api-key}
+
+  # IAM permissions for Lambda
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+          Resource:
+            - arn:aws:ssm:${self:provider.region}:*:parameter/intune-healer/${self:provider.stage}/*
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource:
+            - arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/${self:service}-${self:provider.stage}-*:*
+
+  # API Gateway configuration
+  # apiGateway:
+  #   restApiId: ${ssm:/intune-healer/${self:provider.stage}/api-gateway-id, ''}
+  #   restApiRootResourceId: ${ssm:/intune-healer/${self:provider.stage}/api-gateway-root-id, ''}
+
+functions:
+  api:
+    handler: lambda_handler.lambda_handler
+    description: Intune Device Healer API - Webhook endpoint for Atomicwork
+    events:
+      # Root endpoint
+      - http:
+          path: /
+          method: get
+          cors: true
+
+      # Health check
+      - http:
+          path: /health
+          method: get
+          cors: true
+
+      # Main webhook endpoint for Atomicwork
+      - http:
+          path: /webhook/ticket
+          method: post
+          cors: true
+
+      # Test endpoint for ticket analysis
+      - http:
+          path: /analyze-ticket
+          method: post
+          cors: true
+
+      # Manual remediation execution
+      - http:
+          path: /execute-remediation
+          method: post
+          cors: true
+
+      # Catch-all for FastAPI routes
+      - http:
+          path: /{proxy+}
+          method: any
+          cors: true
+
+    # Reserve concurrent executions (optional, for production)
+    # reservedConcurrency: 10
+
+plugins:
+  - serverless-python-requirements
+  - serverless-prune-plugin
+
+custom:
+  # Python requirements plugin config
+  pythonRequirements:
+    dockerizePip: true
+    layer: false
+    slim: false
+    strip: false
+    zip: false
+
+  # Prune old Lambda versions (keep last 3)
+  prune:
+    automatic: true
+    number: 3
+
+package:
+  individually: false
+  patterns:
+    - '!node_modules/**'
+    - '!venv/**'
+    - '!.venv/**'
+    - '!__pycache__/**'
+    - '!*.pyc'
+    - '!.pytest_cache/**'
+    - '!.git/**'
+    - '!.github/**'
+    - '!tests/**'
+    - '!.env'
+    - '!.env.example'
+    - '!*.md'
+    - '!docs/**'
+    - 'src/**'
+    - 'lambda_handler.py'
+    - 'requirements.txt'
+
+# CloudFormation resources (optional extras)
+resources:
+  Resources:
+    # API Gateway Custom Domain (optional)
+    # ApiGatewayDomainName:
+    #   Type: AWS::ApiGateway::DomainName
+    #   Properties:
+    #     DomainName: intune-healer.yourdomain.com
+    #     CertificateArn: arn:aws:acm:us-east-1:xxx:certificate/xxx
+
+    # CloudWatch Log Group
+    ApiLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/${self:service}-${self:provider.stage}-api
+        RetentionInDays: 7
+
+  Outputs:
+    ApiEndpoint:
+      Description: API Gateway endpoint URL
+      Value:
+        Fn::Sub: https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}
+
+    WebhookUrl:
+      Description: Webhook URL for Atomicwork
+      Value:
+        Fn::Sub: https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}/webhook/ticket

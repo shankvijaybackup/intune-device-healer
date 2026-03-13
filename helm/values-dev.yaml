@@ -1,0 +1,11 @@
+replicaCount: 1
+autoscaling:
+  enabled: false
+image:
+  tag: "dev"
+ingress:
+  enabled: false
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi

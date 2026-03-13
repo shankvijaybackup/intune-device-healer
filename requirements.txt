@@ -1,0 +1,49 @@
+# Intune Device Healer – Full Service Requirements
+# Supports: MCP server, REST API, Rule Engine, PostgreSQL, Prometheus
+
+# ── Web Framework ────────────────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9          # form data / OAuth2 token endpoint
+
+# ── MCP ─────────────────────────────────────────────────────────────────────
+fastmcp>=2.14.0
+
+# ── Azure / Microsoft Graph ──────────────────────────────────────────────────
+azure-identity>=1.15.0
+msal>=1.26.0
+
+# ── Database (PostgreSQL async) ───────────────────────────────────────────────
+sqlalchemy[asyncio]>=2.0.30
+asyncpg>=0.29.0                  # async PostgreSQL driver
+alembic>=1.13.0                  # migrations
+
+# ── JWT Auth ─────────────────────────────────────────────────────────────────
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# ── Prometheus Metrics ───────────────────────────────────────────────────────
+prometheus-client>=0.20.0
+
+# ── Configuration ────────────────────────────────────────────────────────────
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+python-dotenv>=1.0.1
+pyyaml>=6.0.1                    # rules.yaml loading
+
+# ── HTTP Client ──────────────────────────────────────────────────────────────
+httpx>=0.27.0
+
+# ── Utilities ────────────────────────────────────────────────────────────────
+structlog>=24.1.0
+tenacity>=8.3.0                  # retry with exponential backoff
+python-dateutil>=2.9.0
+anyio>=4.4.0
+
+# ── AWS Lambda (optional – comment out for non-Lambda deploys) ────────────────
+# mangum>=0.17.0
+
+# ── Dev / Test ───────────────────────────────────────────────────────────────
+# pytest>=8.0.0
+# pytest-asyncio>=0.23.0
+# httpx  (already listed above – doubles as test client)

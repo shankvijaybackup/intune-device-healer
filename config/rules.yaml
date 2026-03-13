@@ -1,0 +1,295 @@
+# Intune Device Healer – Default Remediation Rules (FR-8)
+# ─────────────────────────────────────────────────────────────────────────────
+# Rule schema:
+#   id            – unique rule identifier (snake_case)
+#   name          – human-readable label
+#   description   – optional context
+#   trigger:
+#     failure_type  – matches WebhookEventIn.failureType exactly
+#     conditions    – (optional) additional guards on event.details fields
+#       - field:    dot-path into details (e.g. "retry_count")
+#         operator: eq | neq | gt | gte | lt | lte | contains | exists
+#         value:    comparison value
+#   remediation:
+#     steps:
+#       - tool:   MCP tool function name (must exist in server.py)
+#         params: extra kwargs merged with {device_id}
+#   retry_policy:
+#     max_attempts:          (default 3)
+#     initial_delay_seconds: (default 30)
+#     backoff_multiplier:    (default 2.0)
+#   escalation:              (optional)
+#     after_attempts: N      – escalate after N failed attempts
+#     action: notify_admin   – currently logs + marks job ESCALATED
+#   priority: critical | high | medium | low
+#   enabled: true | false
+# ─────────────────────────────────────────────────────────────────────────────
+
+rules:
+
+  # ── Windows Update ────────────────────────────────────────────────────────
+  - id: windows_update_failure
+    name: Windows Update Failure – Reset Components
+    description: >
+      Clears Windows Update cache and re-registers update services when a
+      device reports persistent update failures.
+    trigger:
+      failure_type: windows_update_failure
+    remediation:
+      steps:
+        - tool: cleanup_disk_space
+          params: {}
+        - tool: fix_windows_updates
+          params:
+            auto_approve: true
+    retry_policy:
+      max_attempts: 3
+      initial_delay_seconds: 60
+      backoff_multiplier: 2.0
+    escalation:
+      after_attempts: 3
+      action: notify_admin
+    priority: high
+    enabled: true
+
+  # ── Disk Space ────────────────────────────────────────────────────────────
+  - id: disk_space_critical
+    name: Critical Disk Space – Automated Cleanup
+    description: >
+      Runs automated disk cleanup when a device reports critically low disk
+      space (details.free_percent < 10).
+    trigger:
+      failure_type: disk_space_low
+      conditions:
+        - field: free_percent
+          operator: lt
+          value: 10
+    remediation:
+      steps:
+        - tool: cleanup_disk_space
+          params: {}
+        - tool: worklet_clean_temp_files_all_users
+          params: {}
+        - tool: worklet_remove_old_user_profiles
+          params:
+            older_than_days: 90
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 30
+      backoff_multiplier: 2.0
+    priority: high
+    enabled: true
+
+  # ── VPN Connectivity ──────────────────────────────────────────────────────
+  - id: vpn_connectivity_failure
+    name: VPN Connectivity Failure – Repair Profile
+    description: >
+      Repairs VPN profiles and resets network stack when a device loses VPN
+      connectivity.
+    trigger:
+      failure_type: vpn_connectivity_failure
+    remediation:
+      steps:
+        - tool: fix_vpn_configuration
+          params: {}
+        - tool: reset_network_stack
+          params: {}
+    retry_policy:
+      max_attempts: 3
+      initial_delay_seconds: 30
+      backoff_multiplier: 2.0
+    priority: high
+    enabled: true
+
+  - id: vpn_connectivity_failure_mac
+    name: VPN Connectivity Failure (macOS) – Repair Profile
+    trigger:
+      failure_type: vpn_connectivity_failure_macos
+    remediation:
+      steps:
+        - tool: fix_vpn_profile_mac
+          params: {}
+        - tool: reset_network_settings_mac
+          params: {}
+    retry_policy:
+      max_attempts: 3
+      initial_delay_seconds: 30
+      backoff_multiplier: 2.0
+    priority: high
+    enabled: true
+
+  # ── Outlook / Email ───────────────────────────────────────────────────────
+  - id: outlook_pst_corruption
+    name: Outlook PST Corruption – Scan & Repair
+    description: >
+      Runs SCANPST against the user's PST file when Outlook reports corruption.
+    trigger:
+      failure_type: outlook_pst_corruption
+    remediation:
+      steps:
+        - tool: repair_outlook_pst
+          params: {}
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 60
+      backoff_multiplier: 1.5
+    priority: medium
+    enabled: true
+
+  - id: outlook_profile_broken
+    name: Outlook Profile Broken – Rebuild
+    description: >
+      Rebuilds the Outlook profile and recreates the OST cache.
+    trigger:
+      failure_type: outlook_profile_broken
+      conditions:
+        - field: user_email
+          operator: exists
+          value: null
+    remediation:
+      steps:
+        - tool: repair_outlook_pst
+          params: {}
+        - tool: rebuild_outlook_profile
+          params: {}
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 60
+      backoff_multiplier: 2.0
+    escalation:
+      after_attempts: 2
+      action: notify_admin
+    priority: medium
+    enabled: true
+
+  # ── Network Stack ─────────────────────────────────────────────────────────
+  - id: network_connectivity_failure
+    name: Network Stack Failure – Full Reset
+    description: >
+      Resets TCP/IP stack, Winsock, and flushes DNS when general network
+      connectivity fails.
+    trigger:
+      failure_type: network_connectivity_failure
+    remediation:
+      steps:
+        - tool: reset_network_stack
+          params: {}
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 30
+      backoff_multiplier: 2.0
+    priority: high
+    enabled: true
+
+  # ── System File Corruption ────────────────────────────────────────────────
+  - id: system_file_corruption
+    name: System File Corruption – DISM + SFC Repair
+    description: >
+      Runs DISM and SFC to repair corrupted Windows system files.
+    trigger:
+      failure_type: system_file_corruption
+    remediation:
+      steps:
+        - tool: repair_system_files
+          params:
+            auto_approve: true
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 120
+      backoff_multiplier: 2.0
+    escalation:
+      after_attempts: 2
+      action: notify_admin
+    priority: high
+    enabled: true
+
+  # ── Compliance – BitLocker ────────────────────────────────────────────────
+  - id: bitlocker_not_enabled
+    name: BitLocker Disabled – Enable Encryption
+    description: >
+      Enables BitLocker and stores the recovery key in Azure AD when a device
+      falls out of compliance due to missing encryption.
+    trigger:
+      failure_type: bitlocker_not_enabled
+    remediation:
+      steps:
+        - tool: enable_bitlocker
+          params:
+            recovery_key_location: azure_ad
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 60
+      backoff_multiplier: 2.0
+    priority: critical
+    enabled: true
+
+  # ── Security Hardening (auto-triggered) ──────────────────────────────────
+  - id: smb_v1_enabled
+    name: SMBv1 Enabled – Disable Protocol
+    trigger:
+      failure_type: smb_v1_enabled
+    remediation:
+      steps:
+        - tool: worklet_disable_smb_v1
+          params: {}
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 30
+      backoff_multiplier: 2.0
+    priority: critical
+    enabled: true
+
+  - id: firewall_disabled
+    name: Windows Firewall Disabled – Re-enable
+    trigger:
+      failure_type: firewall_disabled
+    remediation:
+      steps:
+        - tool: worklet_enable_windows_firewall
+          params: {}
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 30
+      backoff_multiplier: 2.0
+    priority: critical
+    enabled: true
+
+  # ── macOS Spotlight ───────────────────────────────────────────────────────
+  - id: spotlight_index_corrupt
+    name: Spotlight Index Corrupt – Rebuild
+    trigger:
+      failure_type: spotlight_index_corrupt
+    remediation:
+      steps:
+        - tool: fix_spotlight_index
+          params: {}
+    retry_policy:
+      max_attempts: 2
+      initial_delay_seconds: 30
+      backoff_multiplier: 2.0
+    priority: low
+    enabled: true
+
+  # ── Generic Compliance Sync ───────────────────────────────────────────────
+  - id: intune_sync_overdue
+    name: Intune Sync Overdue – Force Sync
+    description: >
+      Triggers an immediate Intune sync when a device has not checked in for
+      too long (details.days_since_sync >= 3).
+    trigger:
+      failure_type: intune_sync_overdue
+      conditions:
+        - field: days_since_sync
+          operator: gte
+          value: 3
+    remediation:
+      steps:
+        - tool: sync_device
+          params:
+            wait_for_completion: false
+    retry_policy:
+      max_attempts: 3
+      initial_delay_seconds: 60
+      backoff_multiplier: 2.0
+    priority: medium
+    enabled: true

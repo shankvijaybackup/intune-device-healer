@@ -1,0 +1,90 @@
+# Default values for intune-device-healer
+replicaCount: 3
+
+image:
+  repository: ghcr.io/intune-device-healer/healer
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: healer.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: healer-tls
+      hosts:
+        - healer.example.com
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+env:
+  LOG_LEVEL: INFO
+  RULES_CONFIG_PATH: /config/rules.yaml
+  AUTO_FIX_ENABLED: "true"
+  JWT_EXPIRE_MINUTES: "60"
+  DB_POOL_SIZE: "10"
+  DB_MAX_OVERFLOW: "20"
+
+# Secrets – set via --set or external secrets operator in production
+secrets:
+  azureClientId: ""
+  azureTenantId: ""
+  azureClientSecret: ""
+  jwtSecretKey: "change-me"
+  databaseUrl: "postgresql+asyncpg://healer:healer@postgres:5432/healer"
+  healerUsers: "admin:admin:admin"
+  mcpApiKey: ""
+  atomicworkApiUrl: ""
+  atomicworkApiKey: ""
+
+# Rules config mounted as ConfigMap
+rulesConfig:
+  enabled: true
+
+postgresql:
+  enabled: true
+  auth:
+    username: healer
+    password: healer
+    database: healer
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/metrics"
+  prometheus.io/port: "8000"

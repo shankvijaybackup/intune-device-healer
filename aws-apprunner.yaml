@@ -1,0 +1,19 @@
+version: 1.0
+runtime: python3
+build:
+  commands:
+    - pip install -r requirements.txt
+    - cd frontend && npm install && npm run build
+run:
+  command: python src/server.py
+  network:
+    port: 8000
+  env:
+    - name: LOG_LEVEL
+      value: INFO
+    - name: ATOMICWORK_BASE_URL
+      value: https://atombanking.atomicwork.com
+    - name: DATABASE_URL
+      value: postgresql+asyncpg://healer:healer@localhost:5432/healer
+# Note: Sensitive keys (AZURE_*, ATOMICWORK_API_KEY) should be set in the 
+# AWS App Runner console or via AWS Secrets Manager for production.

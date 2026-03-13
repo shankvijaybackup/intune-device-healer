@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: intune-device-healer
+    runtime: docker
+    plan: free # or starter
+    region: oregon # or frankfurt, etc.
+    envVars:
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ATOMICWORK_BASE_URL
+        value: https://atombanking.atomicwork.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: healer-db
+          property: connectionString
+      # Sensitive keys should be set in the Render Dashboard:
+      # - ATOMICWORK_API_KEY
+      # - AZURE_CLIENT_ID
+      # - AZURE_TENANT_ID
+      # - AZURE_CLIENT_SECRET
+
+databases:
+  - name: healer-db
+    plan: free

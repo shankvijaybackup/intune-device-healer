@@ -1,0 +1,40 @@
+# AWS Lambda Requirements
+# Optimized for Lambda deployment (smaller package size)
+
+# Lambda ASGI adapter (REQUIRED for Lambda)
+mangum>=0.17.0
+
+# FastAPI framework
+fastapi>=0.109.0
+uvicorn>=0.27.0
+
+# Azure & Microsoft Graph
+azure-identity>=1.15.0
+msal>=1.26.0
+
+# HTTP clients (use httpx only, more efficient)
+httpx>=0.26.0
+
+# Data Processing
+python-dateutil>=2.8.2
+
+# Configuration
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Logging
+structlog>=24.1.0
+
+# Utilities
+tenacity>=8.2.3
+
+# MCP HTTP transport (required for /mcp endpoint)
+# Pin to exact tested version — fastmcp 3.x has breaking changes
+fastmcp==2.14.5
+
+# Remove these for Lambda (not needed):
+# - pandas (too large, use if really needed)
+# - aiohttp (httpx is enough)
+# - prometheus-client (use CloudWatch instead)
+# - openpyxl, reportlab (generate reports elsewhere)
+# - pytest, black, ruff (dev dependencies)
