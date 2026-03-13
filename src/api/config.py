@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from core.config import settings
 import os
 
-router = APIRouter(prefix="/config", tags=["config"])
+router = APIRouter(prefix="/api/v1/config", tags=["config"])
 
 class ConfigUpdate(BaseModel):
     atomicworkUrl: str
