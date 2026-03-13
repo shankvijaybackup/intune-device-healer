@@ -274,11 +274,39 @@ def get_worklets_tools():
     return _worklets_tools
 
 
-def get_atomicwork_client():
-    global _atomicwork_client
-    if _atomicwork_client is None:
-        _atomicwork_client = AtomicworkClient()
-    return _atomicwork_client
+    async def load_credentials_from_db(self):
+        """Fetch credentials from PostgreSQL SystemConfig table"""
+        from infra.database import get_db_session
+        from domain.models import SystemConfigORM
+        from sqlalchemy import select
+
+        async with get_db_session() as db:
+            stmt = select(SystemConfigORM)
+            result = await db.execute(stmt)
+            configs = result.scalars().all()
+            for config in configs:
+                if config.key == "ATOMICWORK_BASE_URL":
+                    settings.atomicwork_base_url = config.value
+                elif config.key == "ATOMICWORK_API_KEY":
+                    settings.atomicwork_api_key = config.value
+                elif config.key == "AZURE_CLIENT_ID":
+                    settings.azure_client_id = config.value
+                elif config.key == "AZURE_TENANT_ID":
+                    settings.azure_tenant_id = config.value
+                elif config.key == "AZURE_CLIENT_SECRET":
+                    settings.azure_client_secret = config.value
+
+    async def get_ticket(self, display_id: str) -> Dict[str, Any]:
+        """
+        Fetch full ticket details from Atomicwork API.
+        Refreshes credentials from DB first.
+        """
+        await self.load_credentials_from_db()
+        url = f"{self.base_url}/api/v1/requests/{display_id}"
+        logger.info(f"Fetching ticket from Atomicwork: {url}")
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url, headers=self.headers)
 
 
 # ============================================================================

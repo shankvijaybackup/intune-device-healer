@@ -12,13 +12,21 @@ class ConfigUpdate(BaseModel):
     azureTenantId: str
     azureClientSecret: str
 
-import base64
+from domain.models import SystemConfigORM
+from sqlalchemy.ext.asyncio import AsyncSession
+from infra.database import db_session_dep
+from fastapi import Depends
+from sqlalchemy import select
 
 @router.post("")
-async def update_config(payload: ConfigUpdate, request: Request):
+async def update_config(
+    payload: ConfigUpdate, 
+    request: Request,
+    db: AsyncSession = Depends(db_session_dep)
+):
     """
     Update system configuration and return deployment instructions.
-    Expects Base64 encoded sensitive fields.
+    Expects Base64 encoded sensitive fields. Persists to PostgreSQL.
     """
     try:
         def decode_field(encoded_str: str) -> str:
@@ -36,12 +44,32 @@ async def update_config(payload: ConfigUpdate, request: Request):
         decoded_tenant_id = decode_field(payload.azureTenantId)
         decoded_secret = decode_field(payload.azureClientSecret)
 
-        # Update settings object
+        # Update settings object (immediate local effect)
         settings.atomicwork_base_url = decoded_url
         settings.atomicwork_api_key = decoded_key
         settings.azure_client_id = decoded_client_id
         settings.azure_tenant_id = decoded_tenant_id
         settings.azure_client_secret = decoded_secret
+
+        # Persist to Database for multi-worker sync
+        configs = {
+            "ATOMICWORK_BASE_URL": decoded_url,
+            "ATOMICWORK_API_KEY": decoded_key,
+            "AZURE_CLIENT_ID": decoded_client_id,
+            "AZURE_TENANT_ID": decoded_tenant_id,
+            "AZURE_CLIENT_SECRET": decoded_secret
+        }
+
+        for key, value in configs.items():
+            stmt = select(SystemConfigORM).where(SystemConfigORM.key == key)
+            result = await db.execute(stmt)
+            obj = result.scalar_one_or_none()
+            if obj:
+                obj.value = value
+            else:
+                db.add(SystemConfigORM(key=key, value=value))
+        
+        await db.commit()
 
         # Update environment variables for other modules
         os.environ["ATOMICWORK_BASE_URL"] = decoded_url
@@ -50,15 +78,15 @@ async def update_config(payload: ConfigUpdate, request: Request):
         os.environ["AZURE_TENANT_ID"] = decoded_tenant_id
         os.environ["AZURE_CLIENT_SECRET"] = decoded_secret
 
-        # Persist to .env for next restart
+        # Also fallback to .env for local/standalone CLI use
         env_path = os.path.join(os.getcwd(), ".env")
-        with open(env_path, "a") as f:
-            f.write(f"\n# Updated via Dashboard (Zero-Visibility Loop)\n")
-            f.write(f"ATOMICWORK_BASE_URL=\"{decoded_url}\"\n")
-            f.write(f"ATOMICWORK_API_KEY=\"{decoded_key}\"\n")
-            f.write(f"AZURE_CLIENT_ID=\"{decoded_client_id}\"\n")
-            f.write(f"AZURE_TENANT_ID=\"{decoded_tenant_id}\"\n")
-            f.write(f"AZURE_CLIENT_SECRET=\"{decoded_secret}\"\n")
+        try:
+            with open(env_path, "a") as f:
+                f.write(f"\n# Auto-Updated via DB-Persist\n")
+                f.write(f"ATOMICWORK_BASE_URL=\"{decoded_url}\"\n")
+                f.write(f"ATOMICWORK_API_KEY=\"{decoded_key}\"\n")
+        except:
+            pass
 
         # Calculate Webhook details
         base_url = str(request.base_url).rstrip("/")

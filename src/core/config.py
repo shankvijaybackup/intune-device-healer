@@ -140,5 +140,17 @@ class Config(BaseModel):
         return users
 
 
-# Create global settings instance
-settings = Config()
+    # Create global settings instance
+    
+    @classmethod
+    def load_settings(cls):
+        s = cls()
+        # Render provides DATABASE_URL starting with postgres://
+        # asyncpg requires postgresql+asyncpg://
+        if s.database_url.startswith("postgres://"):
+            s.database_url = s.database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif s.database_url.startswith("postgresql://"):
+            s.database_url = s.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return s
+
+settings = Config.load_settings()
