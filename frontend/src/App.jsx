@@ -40,10 +40,19 @@ function App() {
     e.preventDefault()
     setIsSaving(true)
     try {
+      // Obfuscated Payload Pattern (Zero-Visibility)
+      const encodedConfig = {
+        ...config,
+        atomicworkApiKey: btoa(config.atomicworkApiKey),
+        azureClientId: btoa(config.azureClientId),
+        azureTenantId: btoa(config.azureTenantId),
+        azureClientSecret: btoa(config.azureClientSecret),
+      }
+
       const response = await fetch('/api/v1/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify(encodedConfig)
       })
       const data = await response.json()
       if (response.ok) {
