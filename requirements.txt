@@ -43,6 +43,12 @@ anyio>=4.4.0
 # ── AWS Lambda (optional – comment out for non-Lambda deploys) ────────────────
 # mangum>=0.17.0
 
+# ── Reporting & Diagnostics ──────────────────────────────────────────────────
+python-docx>=1.1.2
+openpyxl>=3.1.2
+psutil>=6.0.0
+pandas>=2.2.0
+
 # ── Dev / Test ───────────────────────────────────────────────────────────────
 # pytest>=8.0.0
 # pytest-asyncio>=0.23.0
