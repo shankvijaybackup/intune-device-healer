@@ -57,14 +57,15 @@ OS_PLATFORM_MAP = {
 }
 
 
+from core.config import settings
+
 class AtomicworkClient:
     """Client for Atomicwork REST API"""
 
     def __init__(self):
-        self.base_url = os.environ.get(
-            "ATOMICWORK_BASE_URL", "https://atombanking.atomicwork.com"
-        )
-        self.api_key = os.environ.get("ATOMICWORK_API_KEY", "")
+        self.config = settings
+        self.base_url = self.config.atomicwork_base_url.rstrip("/")
+        self.api_key = self.config.atomicwork_api_key
         self.headers = {
             "x-api-key": self.api_key,
             "Content-Type": "application/json",
@@ -208,11 +209,7 @@ _atomicwork_client = None
 
 
 def get_config():
-    global _config
-    if _config is None:
-        from core.config import Config
-        _config = Config()
-    return _config
+    return settings
 
 
 def get_authenticator():

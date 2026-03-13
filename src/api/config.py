@@ -43,6 +43,13 @@ async def update_config(payload: ConfigUpdate, request: Request):
         settings.azure_tenant_id = decoded_tenant_id
         settings.azure_client_secret = decoded_secret
 
+        # Update environment variables for other modules
+        os.environ["ATOMICWORK_BASE_URL"] = decoded_url
+        os.environ["ATOMICWORK_API_KEY"] = decoded_key
+        os.environ["AZURE_CLIENT_ID"] = decoded_client_id
+        os.environ["AZURE_TENANT_ID"] = decoded_tenant_id
+        os.environ["AZURE_CLIENT_SECRET"] = decoded_secret
+
         # Persist to .env for next restart
         env_path = os.path.join(os.getcwd(), ".env")
         with open(env_path, "a") as f:
